@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,11 +12,13 @@ import toast from "react-hot-toast";
 export default function ResultPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const projectId = params.projectId as string;
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [autoVideoTriggered, setAutoVideoTriggered] = useState(false);
 
   useEffect(() => {
     if (!user || !projectId) {
@@ -52,6 +54,40 @@ export default function ResultPage() {
     }, 2000);
     return () => clearInterval(interval);
   }, [project?.isGenerating, project?.isVideoGenerating, projectId]);
+
+  const autoVideo = searchParams.get("autoVideo") === "1";
+
+  useEffect(() => {
+    if (!autoVideo || autoVideoTriggered) return;
+    if (!project || !user) return;
+    if (!project.generatedImage || project.generatedVideo || project.isVideoGenerating) return;
+
+    setAutoVideoTriggered(true);
+    setVideoLoading(true);
+    setProject((prev) =>
+      prev ? { ...prev, isVideoGenerating: true } : prev
+    );
+    api
+      .post<{ project: Project }>("/api/project/video", {
+        projectId: project._id,
+      })
+      .then(({ data }) => {
+        setProject(data.project);
+        toast.success("Video generation started");
+      })
+      .catch((err: unknown) => {
+        const msg =
+          (err as { response?: { data?: { error?: string } } })?.response?.data
+            ?.error ?? "Video generation failed";
+        toast.error(msg);
+        setProject((prev) =>
+          prev ? { ...prev, isVideoGenerating: false } : prev
+        );
+      })
+      .finally(() => {
+        setVideoLoading(false);
+      });
+  }, [autoVideo, autoVideoTriggered, project, user]);
 
   const handleGenerateVideo = async () => {
     if (!project || !user) return;
@@ -125,7 +161,7 @@ export default function ResultPage() {
           >
             ← My Videos
           </Link>
-          <h1 className="mt-4 text-2xl font-bold text-white">{project.name}</h1>
+          <h1 className="mt-4 text-2xl font-bold text:white">{project.name}</h1>
           <p className="text-zinc-500">{project.productName}</p>
           {project.error && (
             <p className="mt-2 text-sm text-red-400">{project.error}</p>
@@ -188,7 +224,7 @@ export default function ResultPage() {
                 href={project.generatedVideo}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-[48px] items-center justify-center rounded-xl border border-white/20 px-4 py-3 font-semibold text-white hover:bg-white/10 sm:py-2"
+                className="flex min-h-[48px] items-center justify-center rounded-xl border border-white/20 px-4 py-3 font-semibold text-white hover:bg:white/10 sm:py-2"
               >
                 Download video
               </a>

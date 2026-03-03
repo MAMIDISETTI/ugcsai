@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
+import { AuthModal } from "@/components/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/config/axios";
 import toast from "react-hot-toast";
@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 export default function GeneratePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [name, setName] = useState("");
   const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
@@ -73,8 +74,7 @@ export default function GeneratePage() {
     setSuggestions([]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const createProject = async (mode: "image" | "video") => {
     if (!user) {
       toast.error("Please sign in to create an ad");
       return;
@@ -100,7 +100,8 @@ export default function GeneratePage() {
         }
       );
       toast.success("Ad created! Redirecting…");
-      router.push(`/result/${data.projectId}`);
+      const qs = mode === "video" ? "?autoVideo=1" : "";
+      router.push(`/result/${data.projectId}${qs}`);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data
@@ -124,13 +125,23 @@ export default function GeneratePage() {
           </p>
           {!user && (
             <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-              <Link href="/" className="font-medium underline">
+              <button
+                type="button"
+                onClick={() => setAuthOpen(true)}
+                className="font-medium underline"
+              >
                 Sign in
-              </Link>{" "}
+              </button>{" "}
               to create ads and use credits.
             </p>
           )}
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createProject("image");
+            }}
+            className="mt-8 space-y-6"
+          >
             <div>
               <label className="mb-1 block text-sm font-medium text-zinc-400">
                 Project name
@@ -235,16 +246,33 @@ export default function GeneratePage() {
                 </div>
               )}
             </div>
-            <button
-              type="submit"
-              disabled={loading || !user}
-              className="min-h-[48px] w-full rounded-xl bg-[var(--accent)] py-3 font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
-            >
-              {loading ? "Creating… (5 credits)" : "Create & generate image"}
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                disabled={loading || !user}
+                onClick={() => void createProject("image")}
+                className="min-h-[48px] flex-1 rounded-xl bg-[var(--accent)] py-3 font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
+              >
+                {loading ? "Creating image… (5 credits)" : "Create Image"}
+              </button>
+              <button
+                type="button"
+                disabled={loading || !user}
+                onClick={() => void createProject("video")}
+                className="min-h-[48px] flex-1 rounded-xl border border-[var(--accent)] py-3 font-semibold text-[var(--accent)] hover:bg-[var(--accent)]/10 disabled:opacity-50"
+              >
+                {loading ? "Creating & starting video…" : "Generate Video"}
+              </button>
+            </div>
           </form>
         </div>
       </main>
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          onSuccess={() => setAuthOpen(false)}
+        />
+      )}
     </>
   );
 }
