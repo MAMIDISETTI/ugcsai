@@ -22,7 +22,10 @@ export default function ResultPage() {
   const [imageDeleting, setImageDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [autoVideoTriggered, setAutoVideoTriggered] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const autoVideo = searchParams.get("autoVideo") === "1";
+
+  const isGeneratingVideo = project?.isVideoGenerating || videoLoading;
 
   useEffect(() => {
     if (!user || !projectId) {
@@ -59,6 +62,19 @@ export default function ResultPage() {
     }, 2000);
     return () => clearInterval(interval);
   }, [project?.isGenerating, project?.isVideoGenerating, projectId]);
+
+  // Timer for video generation
+  useEffect(() => {
+    if (!isGeneratingVideo) {
+      setElapsedSeconds(0);
+      return;
+    }
+    setElapsedSeconds(0);
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isGeneratingVideo]);
 
   useEffect(() => {
     if (!autoVideo || autoVideoTriggered) return;
@@ -210,11 +226,14 @@ export default function ResultPage() {
                 <span>Generating your ad image…</span>
                 <span className="text-sm text-zinc-600">This usually takes 30–60 seconds</span>
               </div>
-            ) : project.isVideoGenerating && !hasVideo ? (
+            ) : isGeneratingVideo && !hasVideo ? (
               <div className="flex aspect-video flex-col items-center justify-center gap-3 text-zinc-500">
-                <span className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
-                <span>Generating your ad video…</span>
-                <span className="text-sm text-zinc-600">This can take 1–2 minutes</span>
+                <span className="inline-block h-10 w-10 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                <span className="font-medium">Generating your ad video…</span>
+                <span className="text-2xl font-mono tabular-nums text-white">
+                  {Math.floor(elapsedSeconds / 60)}:{(elapsedSeconds % 60).toString().padStart(2, "0")}
+                </span>
+                <span className="text-sm text-zinc-600">This can take 2–5 minutes</span>
               </div>
             ) : mediaUrl ? (
               hasVideo ? (
@@ -236,21 +255,20 @@ export default function ResultPage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {!project.isGenerating &&
               (project.generatedImage || project.uploadedImages?.[0]) &&
-              !project.generatedVideo && (
+              !project.generatedVideo &&
+              !isGeneratingVideo && (
               <button
                 type="button"
                 onClick={handleGenerateVideo}
-                disabled={videoLoading || project.isVideoGenerating}
-                className="min-h-[48px] rounded-xl bg-[var(--accent)] px-4 py-3 font-semibold text-white hover:bg-[var(--accent-hover)] disabled:opacity-50 sm:py-2"
+                className="min-h-[48px] rounded-xl bg-[var(--accent)] px-4 py-3 font-semibold text-white hover:bg-[var(--accent-hover)] sm:py-2"
               >
-                {project.isVideoGenerating || videoLoading
-                  ? "Generating video… (10 credits)"
-                  : "Generate video (10 credits)"}
+                Generate video (10 credits)
               </button>
             )}
             {!project.isGenerating &&
               (project.generatedImage || project.uploadedImages?.[0]) &&
-              !project.generatedVideo && (
+              !project.generatedVideo &&
+              !isGeneratingVideo && (
               <>
                 {project.uploadedImages?.length ? (
                   <button
