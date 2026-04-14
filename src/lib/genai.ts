@@ -56,7 +56,8 @@ export async function generateAdImage(
   productImageUrl: string,
   productName: string,
   productDescription: string,
-  userPrompt: string
+  userPrompt: string,
+  aspectRatio: string = "9:16"  // ← add this
 ): Promise<Buffer> {
   if (!ai) throw new Error("Google GenAI not configured");
 
@@ -79,6 +80,8 @@ No text overlay unless requested.
       { type: "image", data: imageBase64, mime_type: "image/jpeg" },
     ],
     response_modalities: ["image"],
+    // optionally pass aspectRatio if the API supports it:
+    // config: { aspectRatio }
   });
 
   for (const output of response.outputs ?? []) {
